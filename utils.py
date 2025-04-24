@@ -11,7 +11,26 @@ profile_distributions = {
     'zuinig': {'nacht': 5, 'ochtend': 20, 'middag': 25, 'avond': 30},
 }
 
-def simulate_household_usage(n_days, profile, base_kwh=6.8):
+# Seizoensfactor per dag via interpolatie tussen maandwaarden
+seizoensfactoren_maand = {
+    1: 1.2, 2: 1.2, 3: 1.0, 4: 0.95, 5: 0.95, 6: 0.85,
+    7: 0.85, 8: 0.90, 9: 1.0, 10: 1.05, 11: 1.05, 12: 1.2
+}
+
+def get_seasonal_factor_for_day(current_date):
+    dag_van_maand = current_date.day
+    maand = current_date.month
+    volgende_maand = 1 if maand == 12 else maand + 1
+
+    start_factor = seizoensfactoren_maand[maand]
+    end_factor = seizoensfactoren_maand[volgende_maand]
+
+    dagen_in_maand = (datetime(current_date.year if volgende_maand != 1 else current_date.year + 1, volgende_maand, 1) - datetime(current_date.year, maand, 1)).days
+    interpolatie_factor = dag_van_maand / dagen_in_maand
+
+    return start_factor + (end_factor - start_factor) * interpolatie_factor
+
+def simulate_household_usage(n_days, profile, base_kwh=6.8, start_date=datetime(2024, 1, 1)):
     profile_weights = profile_distributions[profile]
     usage_data = []
 
@@ -26,7 +45,10 @@ def simulate_household_usage(n_days, profile, base_kwh=6.8):
             outlier_days.extend(random.sample(week_days, k=outlier_count))
 
     for day in range(n_days):
+        current_date = start_date + timedelta(days=day)
+        seasonal = get_seasonal_factor_for_day(current_date)
         hourly_usage = []
+
         for hour in range(24):
             if 0 <= hour < 6:
                 block = 'nacht'
@@ -41,7 +63,7 @@ def simulate_household_usage(n_days, profile, base_kwh=6.8):
             block_hours = 6
             base_usage = base_kwh * (block_percentage / 100) / block_hours
             noise = np.random.normal(1.0, 0.1)
-            usage = base_usage * noise
+            usage = base_usage * noise * seasonal
             hourly_usage.append(usage)
 
         # Voeg outlier toe
@@ -60,7 +82,7 @@ def generate_household_dataframe(n_days=365, n_households=30, start_date=datetim
 
     for huishouden in huishoudens:
         profiel = random.choice(profielen)
-        usage = simulate_household_usage(n_days, profiel)
+        usage = simulate_household_usage(n_days, profiel, start_date=start_date)
         for day_idx, dag_data in enumerate(usage):
             datum = start_date + timedelta(days=day_idx)
             record = {
@@ -75,3 +97,4 @@ def generate_household_dataframe(n_days=365, n_households=30, start_date=datetim
 
     df = pd.DataFrame(records)
     return df
+

@@ -13,8 +13,8 @@ profile_distributions = {
 
 # Seizoensfactor per dag via interpolatie tussen maandwaarden
 seizoensfactoren_maand = {
-    1: 1.2, 2: 1.2, 3: 1.0, 4: 0.95, 5: 0.95, 6: 0.85,
-    7: 0.85, 8: 0.90, 9: 1.0, 10: 1.05, 11: 1.05, 12: 1.2
+    1: 1.6, 2: 1.6, 3: 1.45, 4: 1.3, 5: 1.15, 6: 1,
+    7: 1, 8: 1, 9: 1.15, 10: 1.3, 11: 1.45, 12: 1.6
 }
 
 def get_seasonal_factor_for_day(current_date):

@@ -54,7 +54,7 @@ def simulate_household_usage(n_days, profile, base_kwh=6.8):
     return usage_data
 
 def generate_household_dataframe(n_days=365, n_households=30, start_date=datetime(2024, 1, 1)):
-    huishoudens = [f'huishouden_{i+1}' for i in range(n_households)]
+    huishoudens = [f'household_{i+1}' for i in range(n_households)]
     profielen = list(profile_distributions.keys())
     records = []
 
@@ -64,14 +64,14 @@ def generate_household_dataframe(n_days=365, n_households=30, start_date=datetim
         for day_idx, dag_data in enumerate(usage):
             datum = start_date + timedelta(days=day_idx)
             record = {
-                'huishouden': huishouden,
+                'household': huishouden,
                 'profiel': profiel,
-                'datum': datum.strftime('%Y-%m-%d'),
+                'datum': datum.strftime("%d-%m-%Y"),
                 'totaal_kWh': sum(dag_data)
             }
             for uur in range(24):
-                record[f'{uur:02d}:00'] = dag_data[uur]
+                record[f"{uur}"] = dag_data[uur]
             records.append(record)
 
-    df = pd.DataFrame(records)
+    df = pd.DataFrame(records).set_index("datum")
     return df

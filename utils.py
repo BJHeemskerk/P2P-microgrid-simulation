@@ -88,7 +88,7 @@ def generate_household_dataframe(n_days=365, n_households=30, start_date=datetim
             record = {
                 'household': huishouden,
                 'profiel': profiel,
-                'datum': datum.strftime("%d-%m-%Y"),
+                'datum': datum.strftime('%d-%m-%Y'),
                 'totaal_kWh': sum(dag_data)
             }
             for uur in range(24):

@@ -75,13 +75,41 @@ def simulate_household_usage(n_days, profile, base_kwh=6.8, start_date=datetime(
 
     return usage_data
 
-def generate_household_dataframe(n_days=365, n_households=30, start_date=datetime(2024, 1, 1)):
+
+def generate_household_dataframe(n_days=365, n_households=30, start_date=datetime(2024, 1, 1), profile_ratios=None):
     huishoudens = [f'household_{i+1}' for i in range(n_households)]
     profielen = list(profile_distributions.keys())
+    
+    # Als geen verhoudingen meegegeven zijn, kies willekeurig
+    if profile_ratios is None:
+        profile_ratios = {profiel: 1/len(profielen) for profiel in profielen}
+    
+    # Controle: som van verhoudingen moet 1 zijn
+    if not np.isclose(sum(profile_ratios.values()), 1.0):
+        raise ValueError("De som van alle profielverhoudingen moet gelijk zijn aan 1.0")
+
+    # Bepaal hoeveel huishoudens per profiel
+    n_per_profiel = {profiel: int(round(ratio * n_households)) for profiel, ratio in profile_ratios.items()}
+
+    # Corrigeer afronding zodat totaal klopt
+    totaal_toegewezen = sum(n_per_profiel.values())
+    verschil = n_households - totaal_toegewezen
+    if verschil != 0:
+        # Corrigeer bij het eerste profiel (klein verschil)
+        eerste_profiel = list(n_per_profiel.keys())[0]
+        n_per_profiel[eerste_profiel] += verschil
+
+    # Genereer lijst van toegewezen profielen
+    toegewezen_profielen = []
+    for profiel, aantal in n_per_profiel.items():
+        toegewezen_profielen.extend([profiel] * aantal)
+    
+    # Shuffle zodat het niet gesorteerd is op profiel
+    random.shuffle(toegewezen_profielen)
+
     records = []
 
-    for huishouden in huishoudens:
-        profiel = random.choice(profielen)
+    for huishouden, profiel in zip(huishoudens, toegewezen_profielen):
         usage = simulate_household_usage(n_days, profiel, start_date=start_date)
         for day_idx, dag_data in enumerate(usage):
             datum = start_date + timedelta(days=day_idx)

@@ -9,6 +9,7 @@ profile_distributions = {
     'vroege_vogel': {'nacht': 5, 'ochtend': 35, 'middag': 30, 'avond': 30},
     'avondmens': {'nacht': 5, 'ochtend': 15, 'middag': 30, 'avond': 50},
     'zuinig': {'nacht': 5, 'ochtend': 20, 'middag': 25, 'avond': 30},
+    'works_home' : {'nacht': 5, 'ochtend': 20, 'middag': 25, 'avond': 30}
 }
 
 # Seizoensfactor per dag via interpolatie tussen maandwaarden
@@ -16,6 +17,15 @@ seizoensfactoren_maand = {
     1: 1.6, 2: 1.6, 3: 1.45, 4: 1.3, 5: 1.15, 6: 1,
     7: 1, 8: 1, 9: 1.15, 10: 1.3, 11: 1.45, 12: 1.6
 }
+
+profile_base_kwh = {
+    'standaard': 6.8,
+    'vroege_vogel': 6.8,
+    'avondmens': 6.8,
+    'zuinig': 4.8,  # lager verbruik
+    'works_home': 9.1
+}
+
 
 def get_seasonal_factor_for_day(current_date):
     dag_van_maand = current_date.day
@@ -30,7 +40,8 @@ def get_seasonal_factor_for_day(current_date):
 
     return start_factor + (end_factor - start_factor) * interpolatie_factor
 
-def simulate_household_usage(n_days, profile, base_kwh=6.8, start_date=datetime(2024, 1, 1)):
+def simulate_household_usage(n_days, profile, start_date=datetime(2024, 1, 1)):
+    base_kwh = profile_base_kwh[profile]
     profile_weights = profile_distributions[profile]
     usage_data = []
 

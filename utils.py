@@ -8,7 +8,7 @@ profile_distributions = {
     'standaard': {'nacht': 5, 'ochtend': 25, 'middag': 30, 'avond': 40},
     'vroege_vogel': {'nacht': 5, 'ochtend': 35, 'middag': 30, 'avond': 30},
     'avondmens': {'nacht': 5, 'ochtend': 15, 'middag': 30, 'avond': 50},
-    'zuinig': {'nacht': 5, 'ochtend': 20, 'middag': 25, 'avond': 30},
+    'energy_saver': {'nacht': 5, 'ochtend': 20, 'middag': 25, 'avond': 30},
     'works_home' : {'nacht': 5, 'ochtend': 20, 'middag': 25, 'avond': 30}
 }
 
@@ -22,7 +22,7 @@ profile_base_kwh = {
     'standaard': 6.8,
     'vroege_vogel': 6.8,
     'avondmens': 6.8,
-    'zuinig': 4.8,  # lager verbruik
+    'energy_saver': 4.8,  # lager verbruik
     'works_home': 9.1
 }
 

@@ -2,6 +2,7 @@ import random
 import numpy as np
 from datetime import datetime, timedelta
 import pandas as pd
+import math
 
 # Profielen en verdelingen
 profile_distributions = {
@@ -126,3 +127,25 @@ def generate_household_dataframe(n_days=365, n_households=30, start_date=datetim
     df = pd.DataFrame(records).set_index("datum")
     return df
 
+
+def generate_grid_prize_data(n_days=365, start_date=datetime(2024, 1, 1), base_price=0.1710):
+    data = []
+    
+    for day_offset in range(n_days):
+        current_date = start_date + timedelta(days=day_offset)
+        month_index = (current_date.year - 2024) * 12 + current_date.month - 1
+
+        trend = -0.0075 * math.log1p(month_index + 1)
+
+        seasonal = 0.015 * math.cos((2 * math.pi / 12) * month_index)
+
+        noise = random.uniform(-0.001, 0.001)
+
+        price = round(base_price + trend + seasonal + noise, 4)
+        
+        data.append({
+            "date": current_date,
+            "energy_grid_price": price
+        })
+
+    return pd.DataFrame(data).set_index("date")

@@ -28,6 +28,39 @@ profile_base_kwh = {
 }
 
 
+class Battery:
+    def __init__(self, capacity_kwh, c_rate, efficiency):
+        self.capacity = capacity_kwh
+        self.max_discharge = self.capacity * c_rate
+        self.efficiency = efficiency
+        self.state_of_charge = 0.0
+        self.cost_of_battery = self.capacity * 750
+
+    def charge(self, power_kw, duration_hr):
+        # Limit the charging power to the maximum allowed
+        power = min(power_kw, self.max_discharge)
+
+        # Calculate the energy added, considering efficiency
+        energy_added = power * duration_hr * self.efficiency
+
+        # Update the soc without exceeding capacity
+        self.state_of_charge = min(self.state_of_charge + energy_added, self.capacity)
+
+    def discharge(self, power_kw, duration_hr):
+        # Limit the discharging power to the maximum allowed
+        power = min(power_kw, self.max_discharge)
+
+        # Calculate the energy removed, considering efficiency
+        energy_removed = power * duration_hr / self.efficiency
+
+        # Update the soc without going below zero
+        self.state_of_charge = max(self.state_of_charge - energy_removed, 0.0)
+
+    @property
+    def soc_percent(self):
+        return 100 * (self.state_of_charge / self.capacity)
+
+
 def get_seasonal_factor_for_day(current_date):
     dag_van_maand = current_date.day
     maand = current_date.month
@@ -139,24 +172,36 @@ def generate_household_dataframe(n_days=365, n_households=30, start_date=datetim
     return df
 
 
-def generate_grid_prize_data(n_days=365, start_date=datetime(2024, 1, 1), base_price=0.1710):
+def generate_grid_prize_data(n_days=365, start_date=datetime(2024, 1, 1), base_price=0.1998, solar_csv_path="data/solar_strength.csv"):
+    solar_df = pd.read_csv(solar_csv_path, index_col="DATE")
+
+    daily_solar = solar_df.sum(axis=1)
+    normalized_solar = (daily_solar - daily_solar.min()) / (daily_solar.max() - daily_solar.min())
+
     data = []
-    
+    drift = 0
+
     for day_offset in range(n_days):
-        current_date = start_date + timedelta(days=day_offset)
-        month_index = (current_date.year - 2024) * 12 + current_date.month - 1
+        current_datetime = start_date + timedelta(days=day_offset)
+        date_str = current_datetime.strftime("%d-%m-%Y")
 
-        trend = -0.0075 * math.log1p(month_index + 1)
+        days_since_start = (current_datetime - start_date).days
+        continuous_month_index = days_since_start / 30
 
-        seasonal = 0.015 * math.cos((2 * math.pi / 12) * month_index)
+        trend = -0.01 * math.log1p(continuous_month_index + 1)
+        seasonal = 0.005 * math.cos((2 * math.pi / 12) * continuous_month_index)
 
-        noise = random.uniform(-0.001, 0.001)
+        if date_str in normalized_solar:
+            solar_strength = normalized_solar.loc[date_str]
+            solar_influence = -0.01 * solar_strength
+        else:
+            solar_influence = 0
 
-        price = round(base_price + trend + seasonal + noise, 4)
-        
+        price = round(base_price + trend + seasonal + drift + solar_influence, 4)
+
         data.append({
-            "date": current_date,
-            "energy_grid_price": price
+            'date': date_str,
+            'energy_grid_price': price
         })
 
     return pd.DataFrame(data).set_index("date")

@@ -1,10 +1,10 @@
 import mesa
 import numpy as np
 from datetime import datetime
-import pandas as pd
 from utils import Battery
 from agent import Household
 from dateutil.relativedelta import relativedelta
+from collections import defaultdict
 
 
 class MicroGrid(mesa.Model):
@@ -32,8 +32,8 @@ class MicroGrid(mesa.Model):
         self.elasticity = 0.4
         self.min_price = 0.05
 
-        self.simulation_data = pd.DataFrame()
-        self.agent_data = pd.DataFrame()
+        self.simulation_data = defaultdict(dict)
+        self.agent_data = defaultdict(lambda: defaultdict(dict))
 
         Household.create_agents(model=self, n=n)
         self.grid_battery = Battery(500, 0.5, 0.9)
@@ -48,7 +48,7 @@ class MicroGrid(mesa.Model):
 
             self._update_energy_price()
 
-             # Reset hourly demand/supply for next day
+            # Reset hourly demand/supply for next day
             self.hourly_demand = [0] * 24
             self.hourly_supply = [0] * 24
 
@@ -147,12 +147,7 @@ class MicroGrid(mesa.Model):
             "energy_delta": microgrid_supply - microgrid_demand
         }
 
-        new_row = pd.DataFrame(
-            [sim_data],
-            index=pd.MultiIndex.from_tuples([(self.day_str, self.hour)], names=["Day", "Hour"])
-        )
-
-        self.simulation_data = pd.concat([self.simulation_data, new_row])
+        self.simulation_data[f"{self.day_str}"][f"{self.hour}"] = sim_data
 
     def step(self):
         self.agents.shuffle_do("trade_energy")

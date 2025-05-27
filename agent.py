@@ -1,5 +1,4 @@
 import mesa
-import pandas as pd
 
 
 class Household(mesa.Agent):
@@ -161,12 +160,4 @@ class Household(mesa.Agent):
             "earnings": earnings
         }
 
-        new_row = pd.DataFrame(
-            [agent_data],
-            index=pd.MultiIndex.from_arrays(
-                [[self.model.day_str], [self.model.hour], [self.unique_id]],
-                names=["Day", "Hour", "Agent_ID"]
-                )
-        )
-
-        self.model.agent_data = pd.concat([self.model.agent_data, new_row])
+        self.model.agent_data[f"{self.model.day_str}"][f"{self.model.hour}"][f"{self.unique_id}"] = agent_data

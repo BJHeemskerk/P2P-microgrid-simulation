@@ -132,7 +132,10 @@ class Household(mesa.Agent):
         # kWh = Wh / 1000
         # The time for us is already per hour, hence the value of 1
         produced = (
-            solar_strength * self.solar_panel_area * 1 * 0.2
+            solar_strength
+            * self.solar_panel_area
+            * 1
+            * self.model.panel_efficiency
             ) / 1000
 
         return produced

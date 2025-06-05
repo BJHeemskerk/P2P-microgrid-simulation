@@ -10,13 +10,13 @@ from collections import defaultdict
 
 class MicroGrid(mesa.Model):
     def __init__(
-            self, n, consumption_data, production_data,
+            self, n_households, consumption_data, production_data,
             grid_prize_data, gini=0.1,
-            mean_panels=8, bat_capacity=500,
+            mean_panels=8, panel_efficiency=0.2, bat_capacity=500,
             bat_c_rate=0.5, bat_efficiency=0.9, seed=None
             ):
         super().__init__(seed=seed)
-        self.num_agents = n
+        self.num_agents = n_households
 
         self.consumption_data = consumption_data
         self.production_data = production_data
@@ -24,6 +24,7 @@ class MicroGrid(mesa.Model):
 
         self.gini = gini
         self.mean_panels = mean_panels
+        self.panel_efficiency = panel_efficiency
 
         self.datetime = datetime(2024, 1, 1)
         self.hour = 0
@@ -43,7 +44,7 @@ class MicroGrid(mesa.Model):
         self.simulation_data = defaultdict(dict)
         self.agent_data = defaultdict(lambda: defaultdict(dict))
 
-        Household.create_agents(model=self, n=n)
+        Household.create_agents(model=self, n=n_households)
         self.grid_battery = Battery(bat_capacity, bat_c_rate, bat_efficiency)
 
     def _time_skip(self):

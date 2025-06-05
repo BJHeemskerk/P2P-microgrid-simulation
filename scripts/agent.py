@@ -188,7 +188,13 @@ class Household(mesa.Agent):
         earnings = self.traded_energy * \
             (self.model.grid_price - self.model.energy_price)
 
+        self.profile = self.model.consumption_data[
+            self.model.consumption_data["household"]
+            == f"household_{self.unique_id}"
+            ]["profiel"].values[0]
+
         agent_data = {
+            "profile": self.profile,
             "solarpanel_area": self.solar_panel_area,
             "consumed": self.consumed,
             "produced": self.produced,

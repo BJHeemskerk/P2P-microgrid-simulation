@@ -26,6 +26,10 @@ class MicroGrid(mesa.Model):
         self.mean_panels = mean_panels
         self.panel_efficiency = panel_efficiency
 
+        self.bat_capacity = bat_capacity
+        self.bat_c_rate = bat_c_rate
+        self.bat_efficiency = bat_efficiency
+
         self.datetime = datetime(2024, 1, 1)
         self.hour = 0
         self.day_str = self.datetime.strftime("%d-%m-%Y")

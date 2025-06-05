@@ -2,8 +2,8 @@ import mesa
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from utils import Battery
-from agent import Household
+from scripts.utils import Battery
+from scripts.agent import Household
 from dateutil.relativedelta import relativedelta
 from collections import defaultdict
 

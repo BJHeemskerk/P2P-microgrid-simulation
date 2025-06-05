@@ -150,8 +150,13 @@ def simulate_household_usage(n_days, profile, start_date=datetime(2024, 1, 1)):
 def generate_household_dataframe(
         n_days=365, n_households=30,
         start_date=datetime(2024, 1, 1),
-        profile_ratios=None
+        profile_ratios=None,
+        seed=None
         ):
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+
     huishoudens = [f'household_{i+1}' for i in range(n_households)]
     profielen = list(profile_distributions.keys())
 
@@ -215,8 +220,13 @@ def generate_grid_prize_data(
         n_days=365,
         start_date=datetime(2024, 1, 1),
         base_price=0.1998,
-        solar_csv_path="data/solar_strength.csv"
+        solar_csv_path="data/solar_strength.csv",
+        seed=None
         ):
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+
     solar_df = pd.read_csv(solar_csv_path, index_col="DATE")
 
     daily_solar = solar_df.sum(axis=1)

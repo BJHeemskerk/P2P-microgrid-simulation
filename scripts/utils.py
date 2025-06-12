@@ -19,10 +19,10 @@ profile_distributions = {
         'night': 45, 'morning': 5, 'afternoon': 15, 'evening': 35
         },
     'energy_saver': {
-        'night': 5, 'morning': 20, 'afternoon': 25, 'evening': 30
+        'night': 5, 'morning': 25, 'afternoon': 30, 'evening': 40
         },
     'works_home': {
-        'night': 5, 'morning': 20, 'afternoon': 25, 'evening': 30
+        'night': 5, 'morning': 25, 'afternoon': 35, 'evening': 35
         }
 }
 

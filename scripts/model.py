@@ -13,9 +13,11 @@ class MicroGrid(mesa.Model):
             self, n_households, consumption_data, production_data,
             grid_prize_data, gini=0.1,
             mean_panels=8, panel_efficiency=0.2, bat_capacity=500,
-            bat_c_rate=0.5, bat_efficiency=0.9, seed=None
+            bat_c_rate=0.5, bat_efficiency=0.9, seed=None,
+            verbose=1
             ):
         super().__init__(seed=seed)
+        self.verbose = verbose
         self.num_agents = n_households
 
         self.consumption_data = consumption_data
@@ -71,7 +73,8 @@ class MicroGrid(mesa.Model):
         net_deficit = net_consumption - net_production
 
         if net_deficit > 0:
-            self._handle_battery_deficit(net_deficit)
+            discharged = self._handle_battery_deficit(net_deficit)
+            self._distribute_battery_energy(discharged)
         else:
             self._handle_battery_surplus(net_deficit)
 
@@ -91,6 +94,39 @@ class MicroGrid(mesa.Model):
 
         # Now `net_deficit` is the amount still needed from the external grid
         self.hourly_supply[self.hour] += battery_coverage
+
+        return battery_coverage
+
+    def _distribute_battery_energy(self, battery_coverage):
+        # Identify agents still needing energy
+        needy_agents = [
+            agent for agent in self.agents
+            if agent.remaining_energy < 0
+        ]
+
+        total_deficit = sum(
+            abs(agent.remaining_energy)
+            for agent
+            in needy_agents
+            )
+
+        if total_deficit == 0 or battery_coverage == 0:
+            return
+
+        for agent in needy_agents:
+            agent_deficit = abs(agent.remaining_energy)
+            share_ratio = agent_deficit / total_deficit
+
+            # Determine energy share for this agent
+            battery_share = min(battery_coverage * share_ratio, agent_deficit)
+
+            # Update agent stats
+            agent.energy_from_microgrid += battery_share
+            agent.energy_from_centralgrid -= battery_share
+            agent.energy_from_centralgrid = max(
+                agent.energy_from_centralgrid, 0
+                )
+            agent.remaining_energy += battery_share
 
     def _handle_battery_surplus(self, net_deficit):
         net_surplus = -1 * net_deficit
@@ -116,12 +152,13 @@ class MicroGrid(mesa.Model):
             self.min_price, min(self.energy_price, self.grid_price)
             )
 
-        # Output energy price for the day
-        print(f"[DAILY PRICE UPDATE :: {self.day_str}]: "
-              f"Price: {self.energy_price:.4f} | "
-              f"Grid Price: {self.grid_price:.4f} | "
-              f"Battery charge level: {self.grid_battery.soc_percent:.2f}"
-              )
+        if self.verbose > 0:
+            # Output energy price for the day
+            print(f"[DAILY PRICE UPDATE :: {self.day_str}]: "
+                  f"Price: {self.energy_price:.4f} | "
+                  f"Grid Price: {self.grid_price:.4f} | "
+                  f"Battery charge level: {self.grid_battery.soc_percent:.2f}"
+                  )
 
     def _calculate_target_price(self):
         demand_list = self.hourly_demand

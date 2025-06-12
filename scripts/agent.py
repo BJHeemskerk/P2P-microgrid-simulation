@@ -55,30 +55,40 @@ class Household(mesa.Agent):
                 mean_panels=self.model.mean_panels,
                 n=30,
                 i=self.unique_id
-                ), 1)
+            ), 1)
 
         self.supply = 1
         self.demand = 1
 
         self.remaining_energy = 0
-        self.traded_energy = 0
         self.consumed = 0
         self.produced = 0
-        self.trade_amount = 0
+        self.energy_from_microgrid = 0
+        self.energy_from_centralgrid = 0
+        self.imported_energy = 0
+        self.exported_energy = 0
+        self.traded_energy = 0
 
     def trade_energy(self):
         self._calculate_energy()
         self._trading()
 
-        if self.remaining_energy > 0:
-            self.model.hourly_supply[self.model.hour] += \
-                self.remaining_energy
-        else:
+        if self.remaining_energy < 0:
+            self.energy_from_centralgrid = abs(self.remaining_energy)
             self.model.hourly_demand[self.model.hour] += \
-                abs(self.remaining_energy)
+                self.energy_from_centralgrid
+            self.remaining_energy = 0
+        else:
+            self.model.hourly_supply[self.model.hour] += self.remaining_energy
 
         self._update_dataframe()
+
+        # Resetting data parameters
         self.traded_energy = 0
+        self.energy_from_microgrid = 0
+        self.energy_from_centralgrid = 0
+        self.imported_energy = 0
+        self.exported_energy = 0
 
     def solar_panels_distribution(self, Gini, mean_panels, n):
         k = Gini / (1 - Gini)
@@ -100,7 +110,7 @@ class Household(mesa.Agent):
         # Determine the consumption amount at the current hour
         self.consumed = self._lookup_consumption_for_agent(
             self.model.consumption_data
-            )
+        )
 
         # Determine and calculate the production at the current hour
         self.produced = self._calculate_production_for_agent(
@@ -118,7 +128,7 @@ class Household(mesa.Agent):
         # Look up consumption value for the agent on this day and hour
         lookup_data = day_data[
             day_data["household"] == household_id
-            ][f"{self.model.hour}"].values[0]
+        ][f"{self.model.hour}"].values[0]
 
         return lookup_data
 
@@ -126,7 +136,7 @@ class Household(mesa.Agent):
         # Determine the solar strength at the current hour
         solar_strength = data.loc[
             self.model.day_str, f"{self.model.hour}"
-            ]
+        ]
 
         # Wh = W/m2 * m2 * time * panel_effiency
         # kWh = Wh / 1000
@@ -136,7 +146,7 @@ class Household(mesa.Agent):
             * self.solar_panel_area
             * 1
             * self.model.panel_efficiency
-            ) / 1000
+        ) / 1000
 
         return produced
 
@@ -178,28 +188,28 @@ class Household(mesa.Agent):
             self.remaining_energy -= trade_amount
             buyer.remaining_energy += trade_amount
 
-            self.traded_energy += trade_amount
-            buyer.traded_energy -= trade_amount
+            self.exported_energy += trade_amount
+            buyer.energy_from_microgrid += trade_amount
+            buyer.imported_energy += trade_amount
 
             if self.remaining_energy <= 0:
                 break
 
     def _update_dataframe(self):
-        earnings = self.traded_energy * \
-            (self.model.grid_price - self.model.energy_price)
-
         self.profile = self.model.consumption_data[
             self.model.consumption_data["household"]
             == f"household_{self.unique_id}"
-            ]["profiel"].values[0]
+        ]["profiel"].values[0]
 
         agent_data = {
             "profile": self.profile,
-            "solarpanel_area": self.solar_panel_area,
+            "solarpanels": self.solar_panel_area,
             "consumed": self.consumed,
             "produced": self.produced,
-            "traded": self.traded_energy,
-            "earnings": earnings
+            "energy_microgrid": self.energy_from_microgrid,
+            "energy_centralgrid": self.energy_from_centralgrid,
+            "import": self.imported_energy,
+            "export": self.exported_energy
         }
 
         day_data = self.model.agent_data[self.model.day_str]

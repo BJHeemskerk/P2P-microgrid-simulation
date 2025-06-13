@@ -227,11 +227,10 @@ def generate_grid_prize_data(
         random.seed(seed)
         np.random.seed(seed)
 
-    solar_df = pd.read_csv(solar_csv_path, index_col="DATE")
+    solar_df = pd.read_csv(solar_csv_path, index_col="DATE", parse_dates=True)
 
-    daily_solar = solar_df.sum(axis=1)
-    normalized_solar = (daily_solar - daily_solar.min()) \
-        / (daily_solar.max() - daily_solar.min())
+    # Normalize solar values hourly per day
+    solar_df = solar_df.apply(lambda x: (x - x.min()) / (x.max() - x.min()), axis=1)
 
     data = []
     drift = 0
@@ -244,23 +243,35 @@ def generate_grid_prize_data(
         continuous_month_index = days_since_start / 30
 
         trend = -0.01 * math.log1p(continuous_month_index + 1)
-        seasonal = 0.005 * math.cos(
-            (2 * math.pi / 12) * continuous_month_index
-            )
+        seasonal = 0.005 * math.cos((2 * math.pi / 12) * continuous_month_index)
 
-        if date_str in normalized_solar:
-            solar_strength = normalized_solar.loc[date_str]
-            solar_influence = -0.01 * solar_strength
+        if current_datetime in solar_df.index:
+            solar_row = solar_df.loc[current_datetime]
         else:
-            solar_influence = 0
+            solar_row = pd.Series([0] * 24, index=range(24))
 
-        price = round(
-            base_price + trend + seasonal + drift + solar_influence, 4
+        hourly_prices = {}
+
+        for hour in range(24):
+            # Daily pattern: lower at night, higher at morning/evening peak
+            if 6 <= hour <= 9 or 17 <= hour <= 20:
+                hourly_variation = 0.01
+            elif 0 <= hour < 6 or hour > 21:
+                hourly_variation = -0.005
+            else:
+                hourly_variation = 0
+
+            # Solar influence: cheaper electricity during high solar generation (daytime)
+            solar_strength = solar_row.get(hour, 0)
+            solar_influence = -0.01 * solar_strength
+
+            price = round(
+                base_price + trend + seasonal + drift + solar_influence + hourly_variation,
+                4
             )
+            hourly_prices[str(hour)] = price
 
-        data.append({
-            'date': date_str,
-            'energy_grid_price': price
-        })
+        hourly_prices["date"] = date_str
+        data.append(hourly_prices)
 
     return pd.DataFrame(data).set_index("date")

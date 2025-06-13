@@ -23,27 +23,29 @@ PROFILE_COLORS = {
 
 def grid_price_vs_local_price(sim_df, save=False, folder="simulation"):
     sim_df["day"] = pd.to_datetime(sim_df["day"], format="%d-%m-%Y")
+    sim_df["timestamp"] = sim_df["day"] + pd.to_timedelta(sim_df["hour"], unit="h")
 
-    sim_df["timestamp"] = sim_df["day"] + pd.to_timedelta(
-        sim_df["hour"], unit="h"
-        )
+    daily_avg = sim_df.groupby("day")[["grid_price", "local_price", "calculated_price"]].mean().reset_index()
+
+    colors = {
+        "grid_price": "#1f77b4",
+        "local_price": "#2ca02c",
+        "calculated_price": "#d62728"
+    }
 
     plt.figure(figsize=(14, 5))
-    for col in ["grid_price", "local_price"]:
-        plt.plot(sim_df["timestamp"], sim_df[col], label=col)
+    for col in ["calculated_price", "local_price", "grid_price"]:
+        plt.plot(daily_avg["day"], daily_avg[col], label=col.replace('_', ' ').title(), color=colors[col], alpha=0.8)
 
-    plt.xlabel("Time")
-    plt.ylabel("Energy Price")
-    plt.title("Grid vs Local Energy Price Over Time")
+    plt.xlabel("Date")
+    plt.ylabel("Average Energy Price")
+    plt.title("Daily Average Grid, Local, and Calculated Energy Prices")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
 
     if save:
-        plt.savefig(
-            f"results/{folder}/Price_comparison.png",
-            dpi=300
-            )
+        plt.savefig(f"results/{folder}/Daily_Price_comparison.png", dpi=300)
         plt.close()
     else:
         plt.show()
@@ -102,7 +104,7 @@ def energy_delta_per_agent(agent_df, save=False, folder="simulation"):
         plt.show()
 
 
-def plot_import_export_per_agent(agent_df, save=False, folder="simulation"):
+def import_export_per_agent(agent_df, save=False, folder="simulation"):
     # Gemiddeld profiel per agent (moet 1 profiel per agent zijn)
     agent_profiles = agent_df.groupby(
         'agent_id'
@@ -203,30 +205,30 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
         net_balance = mask_df["net_balance"].values[0]
         profile_report_lines.append(f"- {profile}:")
         profile_report_lines.append(
-            f"        - Avg Produced:     {produced:.2f} kW"
+            f"        - Avg Produced:     {produced:.4f} kW"
             )
         profile_report_lines.append(
-            f"        - Avg Consumed:     {consumed:.2f} kW"
+            f"        - Avg Consumed:     {consumed:.4f} kW"
             )
         profile_report_lines.append(
-            f"        - Avg Imported:     {import_:.2f} kW"
+            f"        - Avg Imported:     {import_:.4f} kW"
             )
         profile_report_lines.append(
-            f"        - Avg Exported:     {export_:.2f} kW"
+            f"        - Avg Exported:     {export_:.4f} kW"
             )
         profile_report_lines.append(
-            f"        - Avg From Grid:    {from_grid:.2f} kW"
+            f"        - Avg From Grid:    {from_grid:.4f} kW"
             )
         profile_report_lines.append(
-            f"        - Avg From Micro:   {from_microgrid:.2f} kW"
+            f"        - Avg From Micro:   {from_microgrid:.4f} kW"
             )
         profile_report_lines.append(
-            f"        - Net Balance:      {net_balance:.2f} kW"
+            f"        - Net Balance:      {net_balance:.4f} kW"
             )
 
     profile_report = "\n            ".join(profile_report_lines)
 
-    total_demand = sim.sim_df["microgrid_demand"].sum()
+    total_demand = sim.sim_df["demand_from_centralgrid"].sum()
     total_supply = sim.sim_df["microgrid_supply"].sum()
     avg_energy_delta = sim.sim_df["energy_delta"].mean()
     avg_central_price = sim.sim_df["grid_price"].mean()
@@ -236,6 +238,13 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
     min_micro_price = sim.sim_df["local_price"].min()
     max_micro_price = sim.sim_df["local_price"].max()
     std_micro_price = sim.sim_df["local_price"].std()
+    avg_calc_prize = sim.sim_df["calculated_price"].mean()
+    min_calc_prize = sim.sim_df["calculated_price"].min()
+    max_calc_prize = sim.sim_df["calculated_price"].max()
+
+    total_charge = sim.sim_df["battery_usage"].sum()
+    avg_charge_perc = sim.sim_df["battery_state"].mean()
+    max_charge = sim.sim_df["battery_state"].max()
 
     report_text = f"""
         Details of the simulation:
@@ -248,7 +257,7 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
           - Mean panels:            {sim.mean_panels:.2f} panels
           - Panel efficiency:       {sim.panel_efficiency:.2f} (%)
           - Battery capacity:       {sim.bat_capacity:.2f} kWh
-          - Battery charge rate:    {sim.bat_c_rate:.2f} kW
+          - Battery charge rate:    {sim.bat_c_rate:.2f} (%)
           - Battery efficiency:     {sim.bat_efficiency:.2f} (%)
           - Number of days:         {len(sim.simulation_data)}
 
@@ -261,7 +270,7 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
 
             Energy statistics:
             -------------------------------------------------
-            - Total demand:             {total_demand:.2f} kWh
+            - Demand from central grid: {total_demand:.2f} kWh
             - Total supply:             {total_supply:.2f} kWh
             - Average energy delta:     {avg_energy_delta:.4f} kWh
             - Average grid price:       {avg_central_price:.4f} €/kWh
@@ -271,10 +280,19 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
             - Min local price:          {min_micro_price:.4f} €/kWh
             - Max local price:          {max_micro_price:.4f} €/kWh
             - Local price deviation:    {std_micro_price:.4f} €/kWh
+            - Average calculated price: {avg_calc_prize:.4f} €/kWh
+            - Min calculated price:     {min_calc_prize:.4f} €/kWh
+            - Max calculated price:     {max_calc_prize:.4f} €/kWh
 
             Profiles:
             -------------------------------------------------
             {profile_report}
+
+            Battery:
+            -------------------------------------------------
+            - Average State of Charge:  {avg_charge_perc:.2f} %
+            - Maximum charge level:     {max_charge:.2f} %
+            - Total battery coverage:   {total_charge:.2f} kWh
 
     """
     if save:
@@ -301,12 +319,26 @@ def gather_results(params, folder):
         seed=42
         )
 
-    production_data = pd.read_csv("data/solar_strength.csv", index_col="DATE")
-
-    grid_price_data = generate_grid_prize_data(
-        n_days=params["n_days"],
-        seed=42
-        )
+    if params["n_days"] > 366 and params["n_days"] < 732:
+        production_data = pd.read_csv("data/solar_2years.csv", index_col="DATE")
+    elif params["n_days"] > 0:
+        production_data = pd.read_csv("data/solar_strength.csv", index_col="DATE")
+    else:
+        return print(
+            "Currently the code only supports up to two years."
+            "Please adjust the `n_days` parameter accodingly!"
+            )
+    if params["n_days"] > 366 and params["n_days"] < 732:
+        grid_price_data = generate_grid_prize_data(
+            n_days=params["n_days"],
+            solar_csv_path="data/solar_2years.csv",
+            seed=42
+            )
+    elif params["n_days"] > 0:
+        grid_price_data = generate_grid_prize_data(
+            n_days=params["n_days"],
+            seed=42
+            )
 
     simulation = MicroGrid(
         n_households=params["n_households"],
@@ -340,13 +372,13 @@ def gather_results(params, folder):
     grid_price_vs_local_price(simulation.sim_df, save=True, folder=folder)
     impact_of_battery_usage(simulation.sim_df, save=True, folder=folder)
     energy_delta_per_agent(simulation.agent_df, save=True, folder=folder)
-    plot_import_export_per_agent(simulation.agent_df, save=True, folder=folder)
+    import_export_per_agent(simulation.agent_df, save=True, folder=folder)
     show_sim_report(
         simulation, params["profile_ratios"],
         save=True, folder=folder
         )
 
-    print(f"""\n
+    print(f"""
     Results have been gathered!
 
     You can find the gathered results in the folder results/{folder}

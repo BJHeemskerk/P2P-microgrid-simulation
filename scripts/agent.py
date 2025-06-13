@@ -75,11 +75,10 @@ class Household(mesa.Agent):
 
         if self.remaining_energy < 0:
             self.energy_from_centralgrid = abs(self.remaining_energy)
-            self.model.hourly_demand[self.model.hour] += \
-                self.energy_from_centralgrid
+            self.model.hourly_demand += self.energy_from_centralgrid
             self.remaining_energy = 0
         else:
-            self.model.hourly_supply[self.model.hour] += self.remaining_energy
+            self.model.hourly_supply += self.remaining_energy
 
         self._update_dataframe()
 

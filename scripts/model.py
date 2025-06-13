@@ -36,12 +36,14 @@ class MicroGrid(mesa.Model):
         self.hour = 0
         self.day_str = self.datetime.strftime("%d-%m-%Y")
 
-        self.hourly_demand = [0] * 24
-        self.hourly_supply = [0] * 24
+        self.hourly_demand = 0
+        self.hourly_supply = 0
         self.energy_delta = 0
+        self.energy_from_battery = 0
 
         self.grid_price = self.grid_price_df.loc[self.day_str].values[0]
         self.energy_price = self.grid_price - 0.01
+        self.calculated_price = 0
 
         self.smoothing = 0.3
         self.elasticity = 0.4
@@ -56,6 +58,14 @@ class MicroGrid(mesa.Model):
     def _time_skip(self):
         if self.hour != 23:
             self.hour += 1
+
+            self._update_energy_price()
+
+            # Reset items
+            self.energy_from_battery = 0
+            self.hourly_demand = 0
+            self.hourly_supply = 0
+
         else:
             self.datetime += relativedelta(days=1)
             self.day_str = self.datetime.strftime("%d-%m-%Y")
@@ -63,9 +73,18 @@ class MicroGrid(mesa.Model):
 
             self._update_energy_price()
 
-            # Reset hourly demand/supply for next day
-            self.hourly_demand = [0] * 24
-            self.hourly_supply = [0] * 24
+            # Reset items
+            self.energy_from_battery = 0
+            self.hourly_demand = 0
+            self.hourly_supply = 0
+
+            if self.verbose > 0:
+                # Output energy price for the day
+                print(f"[DAILY PRICE UPDATE :: {self.day_str}]: "
+                    f"Price: {self.energy_price:.4f} | "
+                    f"Grid Price: {self.grid_price:.4f} | "
+                    f"Battery charge level: {self.grid_battery.soc_percent:.2f}"
+                    )
 
     def _handle_battery_charge(self):
         net_production = sum(agent.produced for agent in self.agents)
@@ -92,8 +111,10 @@ class MicroGrid(mesa.Model):
                 power_kw=battery_coverage, duration_hr=1
                 )
 
+        self.energy_from_battery = battery_coverage
+
         # Now `net_deficit` is the amount still needed from the external grid
-        self.hourly_supply[self.hour] += battery_coverage
+        self.hourly_supply += battery_coverage
 
         return battery_coverage
 
@@ -136,45 +157,28 @@ class MicroGrid(mesa.Model):
 
     def _update_energy_price(self):
         # Grid price update
-        self.grid_price = self.grid_price_df.loc[self.day_str].values[0]
+        self.grid_price = self.grid_price_df.loc[self.day_str][f"{self.hour}"]
 
         # Calculating target price
-        target_price = self._calculate_target_price()
+        self.calculated_price = self._calculate_target_price()
 
         # --- Smoothed Transition ---
         self.energy_price = (1 - self.smoothing) \
             * self.energy_price \
             + self.smoothing \
-            * target_price
+            * self.calculated_price
 
         # Ensuring it never exceeds the grid price
         self.energy_price = max(
             self.min_price, min(self.energy_price, self.grid_price)
             )
 
-        if self.verbose > 0:
-            # Output energy price for the day
-            print(f"[DAILY PRICE UPDATE :: {self.day_str}]: "
-                  f"Price: {self.energy_price:.4f} | "
-                  f"Grid Price: {self.grid_price:.4f} | "
-                  f"Battery charge level: {self.grid_battery.soc_percent:.2f}"
-                  )
-
     def _calculate_target_price(self):
-        demand_list = self.hourly_demand
-        supply_list = self.hourly_supply
-
-        # Avoid zero division
-        valid_hours = [i for i in range(24) if supply_list[i] > 0]
-        if not valid_hours:
-            return self.grid_price  # fallback
-
-        hourly_pressures = [
-            demand_list[i] / supply_list[i] for i in valid_hours
-        ]
+        if self.hourly_supply == 0:
+            return self.grid_price
 
         # Calculate the average pressure across valid hours
-        self.market_pressure = np.mean(hourly_pressures)
+        self.market_pressure = self.hourly_demand / self.hourly_supply
 
         if self.market_pressure > 1:
             # If demand exceeds supply, increase the price but not too sharp
@@ -192,18 +196,18 @@ class MicroGrid(mesa.Model):
         return new_price
 
     def collect_hourly_data(self):
-        microgrid_demand = self.hourly_demand[self.hour]
-        microgrid_supply = self.hourly_supply[self.hour]
-        market_pressure = microgrid_demand / microgrid_supply \
-            if microgrid_supply > 0 else np.nan
+        market_pressure = self.hourly_demand / self.hourly_supply \
+            if self.hourly_supply > 0 else np.nan
 
         sim_data = {
             "grid_price": self.grid_price,
             "local_price": self.energy_price,
+            "calculated_price": self.calculated_price,
             "market_pressure": market_pressure,
-            "microgrid_demand": microgrid_demand,
-            "microgrid_supply": microgrid_supply,
-            "energy_delta": microgrid_supply - microgrid_demand,
+            "demand_from_centralgrid": self.hourly_demand,
+            "microgrid_supply": self.hourly_supply,
+            "energy_delta": self.hourly_supply - self.hourly_demand,
+            "battery_usage": self.energy_from_battery,
             "battery_state": self.grid_battery.soc_percent
         }
 

@@ -1,0 +1,83 @@
+
+        Details of the simulation:
+
+          Parameters:
+          ---------------------------------------------------
+
+          - Number of Households:   30
+          - Gini:                   0.10
+          - Mean panels:            16.00 panels
+          - Panel efficiency:       0.20 (%)
+          - Battery capacity:       1000.00 kWh
+          - Battery charge rate:    1.00 (%)
+          - Battery efficiency:     0.90 (%)
+          - Number of days:         730
+
+          Profiles used:
+          ---------------------------------------------------
+          - early_bird: ratio = 0.25
+          - base_profile: ratio = 0.25
+          - evening_person: ratio = 0.25
+          - energy_saver: ratio = 0.25
+
+          Results:
+          ---------------------------------------------------
+
+            Energy statistics:
+            -------------------------------------------------
+            - Demand from central grid: 121119.51 kWh
+            - Total supply:             161703.50 kWh
+            - Average energy delta:     2.3164 kWh
+            - Average grid price:       0.1767 €/kWh
+            - Min grid price:           0.1598 €/kWh
+            - Max grid price:           0.2079 €/kWh
+            - Average local price:      0.1204 €/kWh
+            - Min local price:          0.0500 €/kWh
+            - Max local price:          0.2055 €/kWh
+            - Local price deviation:    0.0554 €/kWh
+            - Average calculated price: 0.1194 €/kWh
+            - Min calculated price:     0.0000 €/kWh
+            - Max calculated price:     0.2619 €/kWh
+
+            Profiles:
+            -------------------------------------------------
+            - early_bird:
+                    - Avg Produced:     0.3998 kW
+                    - Avg Consumed:     0.3881 kW
+                    - Avg Imported:     0.0419 kW
+                    - Avg Exported:     0.0310 kW
+                    - Avg From Grid:    0.2285 kW
+                    - Avg From Micro:   0.0419 kW
+                    - Net Balance:      0.0118 kW
+            - base_profile:
+                    - Avg Produced:     0.3676 kW
+                    - Avg Consumed:     0.3881 kW
+                    - Avg Imported:     0.0464 kW
+                    - Avg Exported:     0.0326 kW
+                    - Avg From Grid:    0.2505 kW
+                    - Avg From Micro:   0.0464 kW
+                    - Net Balance:      -0.0205 kW
+            - evening_person:
+                    - Avg Produced:     0.3744 kW
+                    - Avg Consumed:     0.3881 kW
+                    - Avg Imported:     0.0360 kW
+                    - Avg Exported:     0.0418 kW
+                    - Avg From Grid:    0.2702 kW
+                    - Avg From Micro:   0.0360 kW
+                    - Net Balance:      -0.0137 kW
+            - energy_saver:
+                    - Avg Produced:     0.3827 kW
+                    - Avg Consumed:     0.2797 kW
+                    - Avg Imported:     0.0297 kW
+                    - Avg Exported:     0.0459 kW
+                    - Avg From Grid:    0.1720 kW
+                    - Avg From Micro:   0.0297 kW
+                    - Net Balance:      0.1030 kW
+
+            Battery:
+            -------------------------------------------------
+            - Average State of Charge:  44.69 %
+            - Maximum charge level:     100.00 %
+            - Total battery coverage:   48523.64 kWh
+
+    

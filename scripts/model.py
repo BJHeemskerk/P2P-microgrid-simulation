@@ -115,6 +115,7 @@ class MicroGrid(mesa.Model):
 
         # Now `net_deficit` is the amount still needed from the external grid
         self.hourly_supply += battery_coverage
+        self.hourly_demand -= battery_coverage
 
         return battery_coverage
 

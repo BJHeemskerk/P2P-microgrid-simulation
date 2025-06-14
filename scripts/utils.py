@@ -254,9 +254,9 @@ def generate_grid_prize_data(
 
         for hour in range(24):
             # Daily pattern: lower at night, higher at morning/evening peak
-            if 6 <= hour <= 9 or 17 <= hour <= 20:
+            if 7 <= hour <= 10 or 17 <= hour <= 21:
                 hourly_variation = 0.01
-            elif 0 <= hour < 6 or hour > 21:
+            elif 0 <= hour < 7 or hour > 23:
                 hourly_variation = -0.005
             else:
                 hourly_variation = 0

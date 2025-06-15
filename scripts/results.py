@@ -11,6 +11,7 @@ from scripts.utils import (
 from scripts.model import MicroGrid
 
 
+# Establishing profile colors for graphs
 PROFILE_COLORS = {
         'early_bird': '#ff0000',
         'evening_person': '#00ff00',
@@ -22,11 +23,26 @@ PROFILE_COLORS = {
 
 
 def grid_price_vs_local_price(sim_df, save=False, folder="simulation"):
+    """
+    Plot daily average grid price, local energy price, and calculated price over time.
+
+    Parameters:
+    -----------
+    sim_df : pd.DataFrame
+        DataFrame containing simulation data with columns ['day', 'hour', 'grid_price', 'local_price', 'calculated_price'].
+    save : bool, optional
+        Whether to save the plot as an image file. Default is False.
+    folder : str, optional
+        Folder name inside 'results' where to save the plot. Default is 'simulation'.
+    """
+    # Convert 'day' to datetime and create timestamp column for plotting
     sim_df["day"] = pd.to_datetime(sim_df["day"], format="%d-%m-%Y")
     sim_df["timestamp"] = sim_df["day"] + pd.to_timedelta(sim_df["hour"], unit="h")
 
+    # Compute daily average of prices
     daily_avg = sim_df.groupby("day")[["grid_price", "local_price", "calculated_price"]].mean().reset_index()
 
+    # Define colors for each price type
     colors = {
         "grid_price": "#1f77b4",
         "local_price": "#2ca02c",
@@ -34,9 +50,12 @@ def grid_price_vs_local_price(sim_df, save=False, folder="simulation"):
     }
 
     plt.figure(figsize=(14, 5))
+
+    # Plot all three price types
     for col in ["calculated_price", "local_price", "grid_price"]:
         plt.plot(daily_avg["day"], daily_avg[col], label=col.replace('_', ' ').title(), color=colors[col], alpha=0.8)
 
+    # Setting axis and title
     plt.xlabel("Date")
     plt.ylabel("Average Energy Price")
     plt.title("Daily Average Grid, Local, and Calculated Energy Prices")
@@ -44,6 +63,7 @@ def grid_price_vs_local_price(sim_df, save=False, folder="simulation"):
     plt.grid(True)
     plt.tight_layout()
 
+    # Save or display the plot
     if save:
         plt.savefig(f"results/{folder}/Daily_Price_comparison.png", dpi=300)
         plt.close()
@@ -52,17 +72,35 @@ def grid_price_vs_local_price(sim_df, save=False, folder="simulation"):
 
 
 def impact_of_battery_usage(sim_df, save=False, folder="simulation"):
+    """
+    Visualize the effect of battery usage on the distribution of local energy prices.
+
+    Parameters:
+    -----------
+    sim_df : pd.DataFrame
+        DataFrame containing simulation data with columns ['battery_state', 'local_price'].
+    save : bool, optional
+        Whether to save the plot as an image file. Default is False.
+    folder : str, optional
+        Folder name inside 'results' where to save the plot. Default is 'simulation'.
+    """
+    # Categorize rows based on whether battery state of charge (SoC) is greater than zero
     sim_df["battery_used"] = sim_df["battery_state"].apply(
         lambda soc: "Battery Used" if soc > 0 else "No Battery"
         )
 
     plt.figure(figsize=(14, 6))
+
+    # Boxplot comparing local prices when battery was used vs not used
     sns.boxplot(y="battery_used", x="local_price", data=sim_df)
+
+    # Setting axis and title
     plt.title("Local Energy Price Distribution With vs. Without Battery Usage")
     plt.ylabel("Battery Usage")
     plt.xlabel("Local Energy Price (€/kWh)")
     plt.grid(True)
 
+    # Save or show the plot
     if save:
         plt.savefig(
             f"results/{folder}/Impact_battery.png",
@@ -74,26 +112,46 @@ def impact_of_battery_usage(sim_df, save=False, folder="simulation"):
 
 
 def energy_delta_per_agent(agent_df, save=False, folder="simulation"):
+    """
+    Plot the net energy balance (produced - consumed) per agent.
+
+    Parameters:
+    -----------
+    agent_df : pd.DataFrame
+        DataFrame with agent-level data containing 'agent_id', 'produced', 'consumed', and 'profile' columns.
+    save : bool, optional
+        Whether to save the plot as an image file. Default is False.
+    folder : str, optional
+        Folder name inside 'results' where to save the plot. Default is 'simulation'.
+    """
+    # Aggregate sum of produced and consumed energy by agent
     agent_summary = agent_df.groupby("agent_id").agg({
         "profile": "first",
         "produced": "sum",
         "consumed": "sum"
     }).reset_index()
+
+    # Calculate net balance
     agent_summary["net_balance"] = agent_summary["produced"] \
         - agent_summary["consumed"]
 
     plt.figure(figsize=(12, 6))
+
+    # Barplot sorted by net balance, colored by profile
     sns.barplot(
         data=agent_summary.sort_values("net_balance"),
         x="agent_id", y="net_balance", palette=PROFILE_COLORS,
         hue="profile"
         )
-    plt.axhline(0, color='black', linestyle='--')
+    
+    # Setting axis and title
+    plt.axhline(0, color='black', linestyle='--') # Line at zero for net balance reference
     plt.title("Net Energy Balance Per Agent (Produced - Consumed)")
     plt.xlabel("Agent ID")
     plt.ylabel("Net Energy Balance (kWh)")
     plt.tight_layout()
 
+    # Save or show plot
     if save:
         plt.savefig(
             f"results/{folder}/Agent_net_energy.png",
@@ -105,31 +163,43 @@ def energy_delta_per_agent(agent_df, save=False, folder="simulation"):
 
 
 def import_export_per_agent(agent_df, save=False, folder="simulation"):
-    # Gemiddeld profiel per agent (moet 1 profiel per agent zijn)
+    """
+    Plot total imported and exported energy per agent, with background color indicating their profile.
+
+    Parameters:
+    -----------
+    agent_df : pd.DataFrame
+        DataFrame with agent-level data including 'agent_id', 'import', 'export', and 'profile' columns.
+    save : bool, optional
+        Whether to save the plot as an image file. Default is False.
+    folder : str, optional
+        Folder name inside 'results' where to save the plot. Default is 'simulation'.
+    """
+    # Extract one profile per agent
     agent_profiles = agent_df.groupby(
         'agent_id'
         )['profile'].first().reset_index()
 
-    # Sommeer import/export per agent
+    # Sum import and export per agent
     grouped = agent_df.groupby(
         'agent_id'
         )[['import', 'export']].sum().reset_index()
 
-    # Voeg profiel toe aan gegroepeerde data
+    # Merge profiles into grouped dataframe
     grouped = grouped.merge(agent_profiles, on='agent_id')
 
-    # Plot instellen
+    # Setup bar plot parameters
     x = np.arange(len(grouped))
     width = 0.4
 
     fig, ax = plt.subplots(figsize=(14, 6))
 
-    # Achtergrondkleuren per profiel
+    # Add background color per agent profile
     for i, row in grouped.iterrows():
         color = PROFILE_COLORS.get(row['profile'], '#eeeeee')
         ax.axvspan(i - 0.4, i + 0.4, color=color, alpha=0.3)
 
-    # Staafdiagrammen
+    # Plot import and export bars
     ax.bar(
         x - width/2, grouped['import'],
         width, label='Import', color='red'
@@ -139,7 +209,7 @@ def import_export_per_agent(agent_df, save=False, folder="simulation"):
         width, label='Export', color='green'
         )
 
-    # X-as instellingen
+    # Set x-axis ticks and labels
     ax.set_xticks(x)
     ax.set_xticklabels(grouped['agent_id'])
     ax.set_xlabel('Agent ID')
@@ -147,12 +217,14 @@ def import_export_per_agent(agent_df, save=False, folder="simulation"):
     ax.set_title('Import en Export per Agent met Profielachtergrond')
     ax.legend()
 
-    # Legenda voor profielen (kleurvakken)
+    # Create legend patches for profiles
     legend_patches = [
         Patch(facecolor=color, edgecolor='none', label=profile)
         for profile, color
         in PROFILE_COLORS.items()
         ]
+
+    # Add profile and import/export legends together
     ax.legend(
         handles=[
             *legend_patches,
@@ -161,8 +233,11 @@ def import_export_per_agent(agent_df, save=False, folder="simulation"):
             ]
         )
 
+
     plt.grid(True, axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
+
+    # Save or show plot
     if save:
         plt.savefig(
             f"results/{folder}/Import_export.png",
@@ -174,8 +249,24 @@ def import_export_per_agent(agent_df, save=False, folder="simulation"):
 
 
 def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
+    """
+    Generate and display or save a comprehensive text report summarizing simulation parameters and results.
+
+    Parameters:
+    -----------
+    sim : MicroGrid
+        The simulation instance containing results data.
+    profile_ratios : dict
+        Dictionary with profile names as keys and their ratios as values.
+    save : bool, optional
+        Whether to save the report to a file. Default is False.
+    folder : str, optional
+        Folder name inside 'results' where to save the report. Default is 'simulation'.
+    """
+    # Extract unique profiles from agent data
     unique_profiles = sim.agent_df['profile'].unique().tolist()
 
+    # Aggregate mean energy statistics per profile
     agent_summary = sim.agent_df.groupby("profile")[
         [
             "produced", "consumed", "import",
@@ -186,6 +277,7 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
     agent_summary["net_balance"] = agent_summary["produced"] - \
         agent_summary["consumed"]
 
+    # Format profile ratio lines for report
     profile_ratio_lines = []
     for profile in unique_profiles:
         ratio = profile_ratios.get(profile, 'N/A')
@@ -193,6 +285,7 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
 
     profile_ratio = "\n          ".join(profile_ratio_lines)
 
+    # Prepare detailed profile report lines
     profile_report_lines = []
     for profile in unique_profiles:
         mask_df = agent_summary[agent_summary["profile"] == profile]
@@ -228,6 +321,7 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
 
     profile_report = "\n            ".join(profile_report_lines)
 
+    # Collect other simulation parameters and data
     total_demand = sim.sim_df["demand_from_centralgrid"].sum()
     total_supply = sim.sim_df["microgrid_supply"].sum()
     avg_energy_delta = sim.sim_df["energy_delta"].mean()
@@ -246,6 +340,7 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
     avg_charge_perc = sim.sim_df["battery_state"].mean()
     max_charge = sim.sim_df["battery_state"].max()
 
+    # Combine all sections into the final report string
     report_text = f"""
         Details of the simulation:
 
@@ -295,6 +390,8 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
             - Total battery coverage:   {total_charge:.2f} kWh
 
     """
+
+    # Save or show text
     if save:
         with open(f"results/{folder}/simulation_report.txt", "w") as file:
             file.write(report_text)
@@ -303,15 +400,42 @@ def show_sim_report(sim, profile_ratios, save=False, folder="simulation"):
 
 
 def gather_results(params, folder):
+    """
+    Run the full microgrid simulation pipeline: generate data, run simulation,
+    save results, create plots, and generate a report.
+
+    Parameters:
+    -----------
+    params : dict
+        Dictionary of simulation parameters. Expected keys include:
+        - n_days (int): Number of simulation days.
+        - n_households (int): Number of households in the simulation.
+        - profile_ratios (dict): Ratios of different household profiles.
+        - gini (float): Gini coefficient to model inequality in consumption.
+        - mean_panels (float): Average number of solar panels per household.
+        - panel_efficiency (float): Efficiency of solar panels.
+        - battery_capacity (float): Battery capacity in kWh.
+        - battery_charge_rate (float): Battery charging rate.
+        - battery_efficiency (float): Battery round-trip efficiency.
+        - seed (int, optional): Random seed for reproducibility.
+    folder : str
+        Folder name inside 'results' directory where all output files will be saved.
+
+    Returns:
+    --------
+    None
+    """
+    # Ensure base 'results' directory exists
     results_path = "results"
     if not os.path.exists(results_path):
         os.makedirs(results_path)
 
+    # Create specific folder for this simulation run
     folder_path = os.path.join(results_path, folder)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    # Creating the dataframes for the simulation
+    # Generate consumption data for households based on profiles and days
     household_prosumption_data = generate_household_dataframe(
         n_days=params["n_days"],
         n_households=params["n_households"],
@@ -319,15 +443,19 @@ def gather_results(params, folder):
         seed=42
         )
 
+    # Load solar production data depending on simulation length
     if params["n_days"] > 366 and params["n_days"] < 732:
         production_data = pd.read_csv("data/solar_2years.csv", index_col="DATE")
     elif params["n_days"] > 0:
         production_data = pd.read_csv("data/solar_strength.csv", index_col="DATE")
     else:
+        # Currently only supports up to two years
         return print(
             "Currently the code only supports up to two years."
             "Please adjust the `n_days` parameter accodingly!"
             )
+
+    # Generate grid price data based on number of days and solar dataset used
     if params["n_days"] > 366 and params["n_days"] < 732:
         grid_price_data = generate_grid_prize_data(
             n_days=params["n_days"],
@@ -340,6 +468,7 @@ def gather_results(params, folder):
             seed=42
             )
 
+    # Initialize MicroGrid simulation object with all parameters and data
     simulation = MicroGrid(
         n_households=params["n_households"],
         consumption_data=household_prosumption_data,
@@ -355,12 +484,15 @@ def gather_results(params, folder):
         verbose=0
     )
 
+    # Run simulation for the total hours (days - 1) * 24
     simulation.long_step(
         n=(params["n_days"] - 1) * 24
         )
 
+    # Convert simulation results to DataFrame for analysis and plotting
     simulation._convert_to_dataframe()
 
+    # Save simulation results dataframes as CSV files
     simulation.sim_df.to_csv(
         f"results/{folder}/simulation_data.csv", sep=";"
     )
@@ -369,17 +501,21 @@ def gather_results(params, folder):
         f"results/{folder}/agent_data.csv", sep=";"
     )
 
+    # Generate and save plots to results folder
     grid_price_vs_local_price(simulation.sim_df, save=True, folder=folder)
     impact_of_battery_usage(simulation.sim_df, save=True, folder=folder)
     energy_delta_per_agent(simulation.agent_df, save=True, folder=folder)
     import_export_per_agent(simulation.agent_df, save=True, folder=folder)
+
+    # Generate and save simulation textual report
     show_sim_report(
         simulation, params["profile_ratios"],
         save=True, folder=folder
         )
 
+    # Inform user of completion and results location
     print(f"""
     Results have been gathered!
 
     You can find the gathered results in the folder results/{folder}
-""")
+    """)

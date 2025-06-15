@@ -27,19 +27,19 @@
 
             Energy statistics:
             -------------------------------------------------
-            - Demand from central grid: 74024.60 kWh
+            - Demand from central grid: 51353.90 kWh
             - Total supply:             55379.76 kWh
-            - Average energy delta:     -2.1284 kWh
-            - Average grid price:       0.1818 ï¿½/kWh
-            - Min grid price:           0.1685 ï¿½/kWh
-            - Max grid price:           0.2079 ï¿½/kWh
-            - Average local price:      0.1423 ï¿½/kWh
-            - Min local price:          0.0500 ï¿½/kWh
-            - Max local price:          0.2055 ï¿½/kWh
-            - Local price deviation:    0.0498 ï¿½/kWh
-            - Average calculated price: 0.1431 ï¿½/kWh
-            - Min calculated price:     0.0000 ï¿½/kWh
-            - Max calculated price:     0.2634 ï¿½/kWh
+            - Average energy delta:     0.4596 kWh
+            - Average grid price:       0.1825 €/kWh
+            - Min grid price:           0.1685 €/kWh
+            - Max grid price:           0.2079 €/kWh
+            - Average local price:      0.1286 €/kWh
+            - Min local price:          0.0500 €/kWh
+            - Max local price:          0.2062 €/kWh
+            - Local price deviation:    0.0582 €/kWh
+            - Average calculated price: 0.1258 €/kWh
+            - Min calculated price:     0.0000 €/kWh
+            - Max calculated price:     0.2607 €/kWh
 
             Profiles:
             -------------------------------------------------
